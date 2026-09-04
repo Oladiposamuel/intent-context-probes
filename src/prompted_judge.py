@@ -115,13 +115,15 @@ def run_prompted_judgements(
                     )["text"]
                     cache[input_hash] = raw
                 parse_error = None
+                repair_output = None
                 try:
                     parsed = parse_judge_json(raw)
                 except (ValueError, json.JSONDecodeError) as exc:
-                    repaired = repair_judge_json_once(bundle, raw, judge_generation)
+                    repair_output = repair_judge_json_once(
+                        bundle, raw, judge_generation
+                    )
                     try:
-                        parsed = parse_judge_json(repaired)
-                        raw = repaired
+                        parsed = parse_judge_json(repair_output)
                     except (ValueError, json.JSONDecodeError) as repair_exc:
                         parsed = None
                         parse_error = f"initial: {exc}; repair: {repair_exc}"
@@ -133,6 +135,7 @@ def run_prompted_judgements(
                     "context_mode": mode,
                     "input_hash": input_hash,
                     "raw_output": raw,
+                    "repair_output": repair_output,
                     "parsed": parsed,
                     "parse_error": parse_error,
                     "dataset_hash": row["dataset_hash"],
