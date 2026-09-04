@@ -1,0 +1,22 @@
+{
+  "alias": "qwen3_4b",
+  "chat_template_sha256": "a55ee1b1660128b7098723e0abcd92caa0788061051c62d51cbe87d9cf1974d8",
+  "device_map_requested": "auto",
+  "dtype_requested": "float16",
+  "enable_thinking": false,
+  "hidden_size": 2560,
+  "model_class": "Qwen3ForCausalLM",
+  "model_id": "Qwen/Qwen3-4B",
+  "num_hidden_layers": 36,
+  "parameters_require_grad": false,
+  "revision": "1cfa9a7208912126459214e8b04321603b3df60c",
+  "selected_layers": [
+    9,
+    18,
+    27,
+    36
+  ],
+  "tokenizer_class": "Qwen2Tokenizer",
+  "training": false,
+  "vocabulary_size": 151669
+}
