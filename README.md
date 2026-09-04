@@ -305,3 +305,31 @@ complete-pair metrics. A failed parse remains missing: it is never regenerated,
 repaired, or imputed during evaluation. Paired bootstrap intervals use only
 complete scenario pairs and preserve domain stratification. Generated score
 tables and metrics remain ignored by Git and are copied to persistent storage.
+
+
+## Blinded AI-assisted response annotation
+
+Prepare the randomized annotation package only after all 128 response artifacts
+are present:
+
+```bash
+python scripts/10_prepare_response_annotations.py
+```
+
+This creates separate 128-row primary and 26-row repeat sheets plus private
+identity and repeat-link keys under `artifacts/annotations/`. Share only the
+two files beginning with `blinded_` with the annotator. Follow
+`docs/AI_ASSISTED_ANNOTATION_RUBRIC.md` and do not inspect private keys before
+both passes are complete.
+
+Save completed sheets as `completed_primary.csv` and
+`completed_repeat.csv`, then validate, hash-lock, unblind, measure repeat
+agreement, and compute descriptive behaviour metrics:
+
+```bash
+python scripts/11_finalize_response_annotations.py
+```
+
+All sheets, keys, completed ratings and analysis outputs are Git-ignored and
+synchronized to persistent storage. Report the annotator as a blinded
+language-model annotator, never as a human.

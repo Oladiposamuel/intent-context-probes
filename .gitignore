@@ -44,3 +44,7 @@ tmp/
 *.log
 results/*.csv
 results/*.json
+
+# Blinded and private response-annotation artifacts
+artifacts/annotations/*
+!artifacts/annotations/.gitkeep
