@@ -7,8 +7,10 @@ project:
 models:
   - alias: qwen3_4b
     model_id: Qwen/Qwen3-4B
+    revision: 1cfa9a7208912126459214e8b04321603b3df60c
   - alias: qwen3_4b_saferl
     model_id: Qwen/Qwen3-4B-SafeRL
+    revision: 1b95ccb88cabaf284ffb6968719c40ae6cd4085b
 
 model_runtime:
   dtype: float16

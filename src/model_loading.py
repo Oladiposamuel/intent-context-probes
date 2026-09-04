@@ -18,15 +18,26 @@ class ModelBundle:
     model: Any
 
 
-def resolve_model_revision(model_id: str) -> str:
-    """Resolve the immutable Hugging Face commit SHA used for a run."""
+def resolve_model_revision(
+    model_id: str,
+    requested_revision: str | None = None,
+) -> str:
+    """Resolve and verify the immutable Hugging Face commit used for a run."""
 
     from huggingface_hub import HfApi
 
     token = os.environ.get("HF_TOKEN")
-    info = HfApi(token=token).model_info(model_id)
+    info = HfApi(token=token).model_info(
+        model_id,
+        revision=requested_revision,
+    )
     if not info.sha:
         raise RuntimeError(f"Hugging Face did not return a revision for {model_id}.")
+    if requested_revision is not None and info.sha != requested_revision:
+        raise RuntimeError(
+            f"Pinned revision mismatch for {model_id}: requested "
+            f"{requested_revision}, resolved {info.sha}."
+        )
     return info.sha
 
 

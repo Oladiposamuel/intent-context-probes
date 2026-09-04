@@ -14,8 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .config import ensure_output_directories, repository_root
-
+from .config import ensure_output_directories, load_config, repository_root
 
 REQUIRED_PACKAGES = (
     "torch",
@@ -96,9 +95,7 @@ def _gpu_manifest() -> tuple[dict[str, Any], list[str]]:
     }
     errors = []
     if properties.total_memory < 15 * 1024**3:
-        errors.append(
-            "GPU has less than 15 GiB VRAM; Qwen3-4B float16 may not fit."
-        )
+        errors.append("GPU has less than 15 GiB VRAM; Qwen3-4B float16 may not fit.")
     return details, errors
 
 
@@ -159,6 +156,14 @@ def build_environment_manifest(
     dataset_path = root / "data/raw/scenarios.jsonl"
     frozen_hash_path = root / "data/FROZEN_DATASET.sha256"
 
+    configured_models = [
+        {
+            "alias": model["alias"],
+            "model_id": model["model_id"],
+            "revision": model["revision"],
+        }
+        for model in load_config(config_path)["models"]
+    ]
     manifest: dict[str, Any] = {
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "platform": platform.platform(),
@@ -169,6 +174,7 @@ def build_environment_manifest(
         "git_commit_sha": git_commit_sha(root),
         "config_path": str(Path(config_path).resolve()),
         "config_sha256": sha256_file(config_path),
+        "configured_models": configured_models,
         "dataset_path": str(dataset_path),
         "dataset_sha256": sha256_file(dataset_path) if dataset_path.is_file() else None,
         "frozen_dataset_hash": (

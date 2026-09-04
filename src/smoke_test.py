@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
@@ -21,7 +20,6 @@ from .model_loading import (
     resolve_model_revision,
 )
 from .rendering import hash_rendered_input, plain_text_transcript, render_chat
-
 
 SAFE_SHARED = {
     "user_turn_1": (
@@ -126,7 +124,10 @@ def run_smoke_test(config: dict[str, Any], model_alias: str) -> Path:
     runtime = config["model_runtime"]
     generation = config["generation"]
 
-    revision = resolve_model_revision(model_spec["model_id"])
+    revision = resolve_model_revision(
+        model_spec["model_id"],
+        model_spec["revision"],
+    )
     tokenizer = load_tokenizer(model_spec["model_id"], revision)
     model = load_model(
         model_spec["model_id"],

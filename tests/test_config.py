@@ -27,6 +27,11 @@ class ConfigTests(unittest.TestCase):
             "Qwen/Qwen3-4B-SafeRL",
         )
 
+    def test_subject_models_pin_immutable_revisions(self):
+        config = load_config(ROOT / "configs/experiment.yaml")
+        for model in config["models"]:
+            self.assertRegex(model["revision"], r"^[0-9a-f]{40}$")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
 import yaml
-
 
 REQUIRED_TOP_LEVEL_KEYS = {
     "project",
@@ -66,9 +66,15 @@ def load_config(path: str | Path) -> dict[str, Any]:
 
     required_aliases = {"qwen3_4b", "qwen3_4b_saferl"}
     if not required_aliases.issubset(aliases):
-        raise ValueError(
-            "Configuration must contain qwen3_4b and qwen3_4b_saferl."
-        )
+        raise ValueError("Configuration must contain qwen3_4b and qwen3_4b_saferl.")
+
+    for model in config["models"]:
+        revision = model.get("revision")
+        if not isinstance(revision, str) or not re.fullmatch(r"[0-9a-f]{40}", revision):
+            raise ValueError(
+                f"Model {model.get('alias')!r} must pin a 40-character "
+                "lowercase Hugging Face revision SHA."
+            )
 
     if config["model_runtime"].get("batch_size") != 1:
         raise ValueError("The frozen initial protocol requires batch_size: 1.")

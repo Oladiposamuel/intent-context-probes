@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the implemented model milestone: a safe activation smoke test."""
+"""Run a model smoke test or frozen-prefix activation extraction."""
 
 from __future__ import annotations
 
@@ -49,27 +49,37 @@ def main() -> int:
     config = load_config(config_path)
     get_model_spec(config, args.model)
 
-    bulk_flags = (
-        args.extract_activations
-        or args.generate_turn4_responses
-        or args.run_prompted_judge
-    )
-    if bulk_flags:
+    unsupported_flags = args.generate_turn4_responses or args.run_prompted_judge
+    if unsupported_flags:
         print(
-            "Bulk model execution is intentionally not implemented in milestone 1. "
-            "Pass --smoke-test only, inspect its artifacts, then implement the "
-            "frozen dataset pipeline.",
+            "Response generation and prompted judgement are not implemented yet. "
+            "Run the smoke test and activation extraction as separate commands.",
             file=sys.stderr,
         )
         return 2
-    if not args.smoke_test:
-        print("Nothing selected. Pass --smoke-test.", file=sys.stderr)
+    if args.smoke_test and args.extract_activations:
+        print(
+            "Pass exactly one of --smoke-test or --extract-activations so the "
+            "smoke artifact can be inspected before the bulk run.",
+            file=sys.stderr,
+        )
+        return 2
+    if not args.smoke_test and not args.extract_activations:
+        print(
+            "Nothing selected. Pass --smoke-test or --extract-activations.",
+            file=sys.stderr,
+        )
         return 2
 
     set_seed(int(config["project"]["seed"]))
-    from src.smoke_test import run_smoke_test
+    if args.smoke_test:
+        from src.smoke_test import run_smoke_test
 
-    run_smoke_test(config, args.model)
+        run_smoke_test(config, args.model)
+    else:
+        from src.extract_activations import run_bulk_activation_extraction
+
+        run_bulk_activation_extraction(config, args.model)
     return 0
 
 
