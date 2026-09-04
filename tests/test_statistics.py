@@ -1,6 +1,7 @@
 import pandas as pd
 import pytest
 
+from src.probe_training import fixed_outer_probe_predictions
 from src.statistics import (
     current_message_pairs_equal,
     paired_gap_summary,
@@ -60,3 +61,33 @@ def test_permutation_flips_whole_scenario_pairs():
         include_groups=False,
     )
     assert (by_scenario == 1).all()
+
+
+def test_permutation_preserves_unlabelled_early_turns():
+    frame = prediction_frame()
+    early = frame.iloc[:2].copy()
+    early["turn_index"] = [1, 2]
+    early["binary_target"] = pd.NA
+    combined = pd.concat([early, frame], ignore_index=True)
+    labels = paired_permuted_labels(
+        combined, __import__("numpy").random.default_rng(42)
+    )
+    assert __import__("numpy").isnan(labels[:2]).all()
+    assert not __import__("numpy").isnan(labels[2:]).any()
+
+    selections = [
+        {"test_domain": domain, "candidate": [1.0, 1.0]}
+        for domain in ["a", "b", "c", "d"]
+    ]
+    activations = __import__("numpy").column_stack(
+        [__import__("numpy").nan_to_num(labels), __import__("numpy").ones(len(labels))]
+    )[:, None, :]
+    predictions = fixed_outer_probe_predictions(
+        combined,
+        [1],
+        activations,
+        selections,
+        {"domains": ["a", "b", "c", "d"], "project": {"seed": 42}},
+        labels,
+    )
+    assert len(predictions) == 128

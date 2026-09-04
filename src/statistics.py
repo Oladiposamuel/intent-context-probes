@@ -103,12 +103,12 @@ def stratified_paired_bootstrap(
 def paired_permuted_labels(frame: pd.DataFrame, rng: np.random.Generator) -> np.ndarray:
     """Flip labels consistently for both turns of randomly selected scenario pairs."""
 
-    labels = frame.binary_target.to_numpy(dtype=int).copy()
+    labels = frame.binary_target.to_numpy(dtype=float, na_value=np.nan).copy()
     flipped = set(
         frame.scenario_id.unique()[
             rng.integers(0, 2, size=frame.scenario_id.nunique()).astype(bool)
         ]
     )
-    mask = frame.scenario_id.isin(flipped).to_numpy()
+    mask = frame.scenario_id.isin(flipped).to_numpy() & ~np.isnan(labels)
     labels[mask] = 1 - labels[mask]
     return labels

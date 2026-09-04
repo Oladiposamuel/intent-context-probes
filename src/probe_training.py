@@ -82,8 +82,10 @@ def fixed_outer_probe_predictions(frame, layers, x, selections, config, labels=N
     indexed = frame.reset_index(drop=True).copy()
     indexed["_row"] = np.arange(len(indexed))
     if labels is not None:
-        indexed["binary_target"] = np.asarray(labels, dtype=int)
+        indexed["binary_target"] = np.asarray(labels, dtype=float)
     eligible = indexed[indexed.turn_index.isin([3, 4])]
+    if eligible.binary_target.isna().any():
+        raise ValueError("Turns 3-4 must have complete binary labels.")
     selected = {item["test_domain"]: item["candidate"] for item in selections}
     predictions = []
     for test_domain in config["domains"]:
