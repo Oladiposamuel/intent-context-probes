@@ -1,0 +1,23 @@
+# Secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.ipynb_checkpoints/
+
+# Hugging Face/model caches
+.cache/
+hf_cache/
+
+# Large experimental outputs
+artifacts/activations/
+artifacts/fitted_probes/
+artifacts/responses/
+
+# Local Colab/Drive paths
+drive/
