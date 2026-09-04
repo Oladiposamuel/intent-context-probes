@@ -1,23 +1,44 @@
-# Secrets
+# Secrets and credentials
 .env
 .env.*
-*.pem
 *.key
+*.pem
 
 # Python
 __pycache__/
 *.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .venv/
+venv/
+
+# Notebook state
 .ipynb_checkpoints/
 
-# Hugging Face/model caches
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+
+# Model downloads and caches
 .cache/
 hf_cache/
+models/
 
-# Large experimental outputs
-artifacts/activations/
-artifacts/fitted_probes/
-artifacts/responses/
+# Large or generated experiment artifacts
+artifacts/activations/*
+!artifacts/activations/.gitkeep
+artifacts/responses/*
+!artifacts/responses/.gitkeep
+artifacts/prompted_judgements/*
+!artifacts/prompted_judgements/.gitkeep
+artifacts/fitted_probes/*
+!artifacts/fitted_probes/.gitkeep
+artifacts/smoke_tests/*
+!artifacts/smoke_tests/.gitkeep
 
-# Local Colab/Drive paths
-drive/
+# Temporary local files
+tmp/
+*.log

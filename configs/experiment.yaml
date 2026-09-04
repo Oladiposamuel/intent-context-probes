@@ -1,0 +1,58 @@
+project:
+  name: intent_context_probes
+  seed: 42
+  dataset_path: data/raw/scenarios.jsonl
+  processed_path: data/processed/prefixes.parquet
+
+models:
+  - alias: qwen3_4b
+    model_id: Qwen/Qwen3-4B
+  - alias: qwen3_4b_saferl
+    model_id: Qwen/Qwen3-4B-SafeRL
+
+model_runtime:
+  dtype: float16
+  device_map: auto
+  max_length: 2048
+  enable_thinking: false
+  add_generation_prompt: true
+  batch_size: 1
+  selected_depth_fractions: [0.25, 0.50, 0.75, 1.00]
+  readout: assistant_decision_last_input_position
+
+generation:
+  turns: [4]
+  max_new_tokens: 256
+  do_sample: false
+  use_cache: true
+
+probe:
+  type: logistic_regression
+  scaler: standard
+  penalty: l2
+  solver: liblinear
+  class_weight: balanced
+  max_iter: 5000
+  C_grid: [0.001, 0.01, 0.1, 1.0]
+
+text_baseline:
+  ngram_range: [1, 2]
+  min_df: 2
+  max_features: 10000
+  sublinear_tf: true
+  C_grid: [0.001, 0.01, 0.1, 1.0]
+
+evaluation:
+  outer_split: leave_one_domain_out
+  inner_split: leave_one_training_domain_out
+  fit_turns: [3, 4]
+  primary_eval_turns: [4]
+  primary_metric: macro_domain_auroc
+  bootstrap_resamples: 2000
+  permutation_resamples_minimum: 200
+
+domains:
+  - cybersecurity
+  - biosecurity_public_health
+  - chemical_safety
+  - autonomous_physical_security
