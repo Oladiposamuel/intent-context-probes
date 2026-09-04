@@ -24,19 +24,20 @@ from src.statistics import (
 )
 
 results = ROOT / "results"
-files = sorted(results.glob("*_predictions.csv")) + sorted(
-    results.glob("*_predictions_verified.csv")
-)
-if not files:
+selected_files = {}
+for path in sorted(results.glob("*_predictions.csv")):
+    method = path.stem.removesuffix("_predictions")
+    selected_files[method] = path
+for path in sorted(results.glob("*_predictions_verified.csv")):
+    method = path.stem.removesuffix("_predictions_verified")
+    selected_files[method] = path
+if not selected_files:
     raise RuntimeError("No prediction tables found. Run scripts 05 and 06 first.")
 
 summary = {}
-for path in files:
+for method, path in sorted(selected_files.items()):
     predictions = pd.read_csv(path)
     validate_predictions(predictions)
-    method = path.stem.removesuffix("_predictions").removesuffix(
-        "_predictions_verified"
-    )
     current = "current_message" in method or method == "tfidf_current"
     summary[method] = {
         "metrics_recomputed": primary_metrics(predictions),
