@@ -8,7 +8,7 @@ conversations.
 
 ## Current milestone
 
-Milestone 1 is implemented:
+Milestone 1 is complete:
 
 - reproducible experiment configuration;
 - Colab/GPU environment validation;
@@ -19,9 +19,20 @@ Milestone 1 is implemented:
 - local unit tests that do not download a model;
 - a thin Colab driver notebook.
 
-Dataset construction, bulk extraction, response annotation, text baselines,
-probe training and evaluation are intentionally not implemented yet. They
-should be built only after the smoke test passes.
+Milestone 2 dataset infrastructure is implemented:
+
+- strict canonical scenario-schema validation;
+- partial-draft validation without accidental freezing;
+- structural, length and lexical audits;
+- blinded-label and pairwise-semantic human-review sheets;
+- explicit deterministic freezing with SHA-256 verification;
+- immutable-change detection and documented revision handling;
+- full-history/current-message prefix construction;
+- pair, label and row-count invariants with local unit tests.
+
+The real 32 scenarios have not been authored or frozen. Bulk model execution,
+response annotation, baselines, probe training and evaluation remain later
+milestones.
 
 ## Repository rules
 
@@ -112,13 +123,87 @@ The environment checker is expected to report missing GPU/ML dependencies on
 an ordinary CPU-only development machine. Use Colab for the required runtime
 check.
 
-## Next milestone after the smoke test
+## Milestone 2: author, audit and freeze the dataset
 
-1. Construct and manually review 32 matched scenarios.
-2. Validate and freeze `data/raw/scenarios.jsonl`.
-3. Build full-history and current-message prefixes.
-4. Run both checkpoints sequentially.
-5. Train TF-IDF baselines before activation probes.
-6. Evaluate with nested leave-one-domain-out validation.
+Use [`data/templates/scenario_template.json`](data/templates/scenario_template.json)
+as an authoring aid. The template is not experimental data. Store one complete
+JSON object per line in `data/raw/scenarios.jsonl`.
 
-Do not proceed to those steps until the smoke-test output has been inspected.
+Draft in small batches and run validation after each batch:
+
+```bash
+python scripts/01_validate_dataset.py \
+  --input data/raw/scenarios.jsonl \
+  --audit-dir data/audits \
+  --refresh-review-templates
+```
+
+`--refresh-review-templates` intentionally replaces entries in the two human
+review sheets. Use it after changing the draft, before completing the review;
+do not use it after entering review decisions unless those decisions are now
+stale.
+
+Inspect `data/audits/length_audit.csv` and `lexical_audit.csv`. Then complete:
+
+- `pairwise_semantic_audit.csv`: enter `yes` for every satisfied check and add
+  the reviewer name;
+- `blinded_label_audit.csv`: assign `benign_evidence`,
+  `suspicious_evidence`, or `ambiguous` without opening
+  `blinded_label_key.csv` first;
+- each scenario's `audit.manual_label_confirmed`: set it to `true` only after
+  the scenario has actually been reviewed.
+
+Rerun validation without replacing the completed review sheets:
+
+```bash
+python scripts/01_validate_dataset.py \
+  --input data/raw/scenarios.jsonl \
+  --audit-dir data/audits
+```
+
+Only after all 32 scenarios and both reviews are complete, freeze explicitly:
+
+```bash
+python scripts/01_validate_dataset.py \
+  --input data/raw/scenarios.jsonl \
+  --audit-dir data/audits \
+  --freeze \
+  --freeze-hash data/FROZEN_DATASET.sha256
+```
+
+The freeze command requires exactly eight scenarios in each domain and refuses
+incomplete human audits. It rewrites the JSONL deterministically, records the
+hash and manifest, and detects later byte changes. A genuine post-freeze
+correction requires both `--allow-revision` and `--revision-note`; all later
+artifacts must then be rerun.
+
+Build the experimental prefix tables only after freezing:
+
+```bash
+python scripts/02_build_prefixes.py --config configs/experiment.yaml
+```
+
+For draft inspection only, use `--allow-draft`. The final model runs must use
+the verified frozen dataset.
+
+Expected Milestone 2 outputs:
+
+```text
+data/
+├── FROZEN_DATASET.sha256
+├── raw/scenarios.jsonl
+├── processed/prefixes.csv
+├── processed/prefixes.parquet
+└── audits/
+    ├── structural_audit.json
+    ├── length_audit.csv
+    ├── lexical_audit.csv
+    ├── pairwise_semantic_audit.csv
+    ├── blinded_label_audit.csv
+    ├── blinded_label_key.csv
+    └── freeze_manifest.json
+```
+
+After those outputs pass inspection, run both checkpoints sequentially, then
+train TF-IDF baselines before activation probes and evaluate with nested
+leave-one-domain-out validation.
