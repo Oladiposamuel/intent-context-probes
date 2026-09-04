@@ -18,6 +18,7 @@ from src.probe_training import fixed_outer_probe_predictions, load_aligned_activ
 from src.statistics import (
     current_message_pairs_equal,
     paired_gap_summary,
+    paired_method_bootstrap,
     paired_permuted_labels,
     stratified_paired_bootstrap,
     validate_predictions,
@@ -35,9 +36,11 @@ if not selected_files:
     raise RuntimeError("No prediction tables found. Run scripts 05 and 06 first.")
 
 summary = {}
+prediction_tables = {}
 for method, path in sorted(selected_files.items()):
     predictions = pd.read_csv(path)
     validate_predictions(predictions)
+    prediction_tables[method] = predictions
     current = "current_message" in method or method == "tfidf_current"
     summary[method] = {
         "metrics_recomputed": primary_metrics(predictions),
@@ -83,6 +86,48 @@ for model in [item["alias"] for item in config["models"]]:
         ),
         "null_mean": float(np.mean(null)),
     }
+
+comparisons = {}
+comparison_specs = {
+    "qwen_context_full_minus_current": (
+        "qwen3_4b_full_history",
+        "qwen3_4b_current_message",
+    ),
+    "saferl_context_full_minus_current": (
+        "qwen3_4b_saferl_full_history",
+        "qwen3_4b_saferl_current_message",
+    ),
+    "saferl_minus_qwen_full_history": (
+        "qwen3_4b_saferl_full_history",
+        "qwen3_4b_full_history",
+    ),
+    "qwen_activation_minus_tfidf_full": (
+        "qwen3_4b_full_history",
+        "tfidf_full",
+    ),
+    "saferl_activation_minus_tfidf_full": (
+        "qwen3_4b_saferl_full_history",
+        "tfidf_full",
+    ),
+    "qwen_activation_minus_length": (
+        "qwen3_4b_full_history",
+        "length",
+    ),
+    "saferl_activation_minus_length": (
+        "qwen3_4b_saferl_full_history",
+        "length",
+    ),
+}
+for name, (first_method, second_method) in comparison_specs.items():
+    comparisons[name] = paired_method_bootstrap(
+        prediction_tables[first_method],
+        prediction_tables[second_method],
+        first_name=first_method,
+        second_name=second_method,
+        iterations=2000,
+        seed=config["project"]["seed"],
+    )
+summary["method_comparisons"] = comparisons
 
 destination = results / "verification_metrics.json"
 destination.write_text(

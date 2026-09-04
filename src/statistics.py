@@ -100,6 +100,90 @@ def stratified_paired_bootstrap(
     }
 
 
+def paired_method_bootstrap(
+    first: pd.DataFrame,
+    second: pd.DataFrame,
+    *,
+    first_name: str,
+    second_name: str,
+    iterations: int = 2000,
+    seed: int = 42,
+) -> dict[str, float | int | str]:
+    """Bootstrap a macro-AUROC difference using identical scenario resamples."""
+
+    validate_predictions(first)
+    validate_predictions(second)
+    identity = [
+        "example_id",
+        "scenario_id",
+        "domain",
+        "branch",
+        "turn_index",
+        "binary_target",
+    ]
+    aligned = first[identity + ["score"]].merge(
+        second[identity + ["score"]],
+        on=identity,
+        how="inner",
+        validate="one_to_one",
+        suffixes=("_first", "_second"),
+    )
+    if len(aligned) != len(first) or len(aligned) != len(second):
+        raise ValueError("Method prediction tables do not contain identical labelled rows.")
+
+    turn4 = aligned[aligned.turn_index == 4]
+    domains = sorted(turn4.domain.unique())
+
+    def macro_auc(sample: pd.DataFrame, score_column: str) -> float:
+        return float(
+            np.mean(
+                [
+                    roc_auc_score(
+                        sample.loc[sample.domain == domain, "binary_target"],
+                        sample.loc[sample.domain == domain, score_column],
+                    )
+                    for domain in domains
+                ]
+            )
+        )
+
+    first_estimate = macro_auc(turn4, "score_first")
+    second_estimate = macro_auc(turn4, "score_second")
+    estimate = first_estimate - second_estimate
+    rng = np.random.default_rng(seed)
+    differences: list[float] = []
+    for _ in range(iterations):
+        sampled_blocks = []
+        for domain in domains:
+            block = turn4[turn4.domain == domain]
+            scenario_ids = block.scenario_id.unique()
+            chosen = rng.choice(scenario_ids, size=len(scenario_ids), replace=True)
+            sampled_blocks.extend(
+                block[block.scenario_id == scenario] for scenario in chosen
+            )
+        sampled = pd.concat(sampled_blocks, ignore_index=True)
+        differences.append(
+            macro_auc(sampled, "score_first")
+            - macro_auc(sampled, "score_second")
+        )
+
+    low, high = np.quantile(differences, [0.025, 0.975])
+    return {
+        "first_method": first_name,
+        "second_method": second_name,
+        "first_estimate": first_estimate,
+        "second_estimate": second_estimate,
+        "estimate_difference": float(estimate),
+        "ci_low": float(low),
+        "ci_high": float(high),
+        "bootstrap_fraction_greater_than_zero": float(
+            np.mean(np.asarray(differences) > 0)
+        ),
+        "iterations": iterations,
+        "seed": seed,
+    }
+
+
 def paired_permuted_labels(frame: pd.DataFrame, rng: np.random.Generator) -> np.ndarray:
     """Flip labels consistently for both turns of randomly selected scenario pairs."""
 

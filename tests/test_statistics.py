@@ -5,6 +5,7 @@ from src.probe_training import fixed_outer_probe_predictions
 from src.statistics import (
     current_message_pairs_equal,
     paired_gap_summary,
+    paired_method_bootstrap,
     paired_permuted_labels,
     stratified_paired_bootstrap,
     validate_predictions,
@@ -91,3 +92,22 @@ def test_permutation_preserves_unlabelled_early_turns():
         labels,
     )
     assert len(predictions) == 128
+
+
+def test_paired_method_bootstrap_uses_shared_resamples():
+    first = prediction_frame()
+    second = first.copy()
+    second.loc[second.turn_index == 4, "score"] = 0.5
+    comparison = paired_method_bootstrap(
+        first,
+        second,
+        first_name="perfect",
+        second_name="chance",
+        iterations=20,
+        seed=42,
+    )
+    assert comparison["first_estimate"] == 1.0
+    assert comparison["second_estimate"] == 0.5
+    assert comparison["estimate_difference"] == 0.5
+    assert comparison["ci_low"] == comparison["ci_high"] == 0.5
+    assert comparison["bootstrap_fraction_greater_than_zero"] == 1.0
