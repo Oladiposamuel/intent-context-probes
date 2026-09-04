@@ -42,3 +42,5 @@ artifacts/smoke_tests/*
 # Temporary local files
 tmp/
 *.log
+results/*.csv
+results/*.json
