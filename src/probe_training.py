@@ -130,3 +130,66 @@ def fixed_outer_probe_predictions(frame, layers, x, selections, config, labels=N
     import pandas as pd
 
     return pd.DataFrame(predictions)
+
+
+def fixed_outer_probe_trajectory(frame, layers, x, selections, config):
+    """Refit registered outer probes on Turns 3-4 and score held-out Turns 1-4."""
+
+    import pandas as pd
+
+    indexed = frame.reset_index(drop=True).copy()
+    indexed["_row"] = np.arange(len(indexed))
+    eligible = indexed[indexed.turn_index.isin([3, 4])]
+    if eligible.binary_target.isna().any():
+        raise ValueError("Turns 3-4 must have complete binary labels.")
+    selected = {item["test_domain"]: item["candidate"] for item in selections}
+    rows = []
+    for test_domain in config["domains"]:
+        c_value, layer = selected[test_domain]
+        layer_index = layers.index(int(layer))
+        train = eligible[eligible.domain != test_domain]
+        test = indexed[indexed.domain == test_domain]
+        model = Pipeline(
+            [
+                ("scale", StandardScaler()),
+                (
+                    "classifier",
+                    LogisticRegression(
+                        C=float(c_value),
+                        penalty="l2",
+                        solver="liblinear",
+                        class_weight="balanced",
+                        max_iter=5000,
+                        random_state=config["project"]["seed"],
+                    ),
+                ),
+            ]
+        )
+        model.fit(
+            x[train._row.to_numpy(), layer_index, :],
+            train.binary_target.astype(int),
+        )
+        scores = model.predict_proba(x[test._row.to_numpy(), layer_index, :])[:, 1]
+        for (_, row), score in zip(test.iterrows(), scores):
+            rows.append(
+                {
+                    "example_id": row.example_id,
+                    "scenario_id": row.scenario_id,
+                    "domain": row.domain,
+                    "branch": row.branch,
+                    "turn_index": int(row.turn_index),
+                    "branch_target": int(row.branch == "suspicious"),
+                    "score": float(score),
+                    "test_domain": test_domain,
+                    "selected_C": float(c_value),
+                    "selected_layer": int(layer),
+                }
+            )
+    trajectory = pd.DataFrame(rows)
+    if len(trajectory) != len(indexed):
+        raise RuntimeError(
+            f"Expected {len(indexed)} trajectory scores, found {len(trajectory)}."
+        )
+    if not trajectory.example_id.is_unique:
+        raise RuntimeError("Trajectory example IDs are not unique.")
+    return trajectory

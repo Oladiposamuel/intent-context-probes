@@ -269,3 +269,22 @@ data/
 After those outputs pass inspection, run both checkpoints sequentially, then
 train TF-IDF baselines before activation probes and evaluate with nested
 leave-one-domain-out validation.
+
+
+## CPU analysis and early-prefix sanity
+
+After the activation, baseline and probe artifacts are complete, run the verified
+statistics and H6 trajectory checks on CPU:
+
+```bash
+python scripts/07_evaluate.py
+python scripts/08_analyze_trajectory.py
+```
+
+The trajectory runner refits each outer-fold probe using only registered Turns
+3-4 from the three training domains and the already selected layer and
+regularization. It then scores Turns 1-4 in the held-out domain. The runner
+refuses to complete unless the shared benign/suspicious inputs at Turns 1-2
+receive equal scores and yield chance branch AUROC. Generated trajectory CSV
+and JSON files remain ignored by Git and are synchronized to persistent
+storage when configured.
