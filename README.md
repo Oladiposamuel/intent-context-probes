@@ -288,3 +288,20 @@ refuses to complete unless the shared benign/suspicious inputs at Turns 1-2
 receive equal scores and yield chance branch AUROC. Generated trajectory CSV
 and JSON files remain ignored by Git and are synchronized to persistent
 storage when configured.
+
+
+## Prompted-judgement evaluation
+
+Evaluate the four saved prompted-judgement artifacts without loading either
+language model:
+
+```bash
+python scripts/09_evaluate_prompted_judgements.py
+```
+
+The evaluator validates all 64 expected IDs, frozen dataset hashes, checkpoint
+revisions and context modes. It reports available-case AUROC and separate
+complete-pair metrics. A failed parse remains missing: it is never regenerated,
+repaired, or imputed during evaluation. Paired bootstrap intervals use only
+complete scenario pairs and preserve domain stratification. Generated score
+tables and metrics remain ignored by Git and are copied to persistent storage.
