@@ -215,3 +215,14 @@ def sync_directory_to_persistent(local_directory: Path) -> Path | None:
     destination = Path(persistent_value).expanduser() / relative
     shutil.copytree(local_directory, destination, dirs_exist_ok=True)
     return destination
+
+
+def sync_results_to_persistent(local_directory: Path) -> Path | None:
+    """Copy result tables beside the configured persistent artifact root."""
+
+    persistent_value = os.environ.get("MATS_PERSISTENT_ARTIFACT_ROOT")
+    if not persistent_value:
+        return None
+    destination = Path(persistent_value).expanduser().parent / "results"
+    shutil.copytree(local_directory, destination, dirs_exist_ok=True)
+    return destination
