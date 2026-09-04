@@ -49,11 +49,10 @@ def main() -> int:
     config = load_config(config_path)
     get_model_spec(config, args.model)
 
-    unsupported_flags = args.generate_turn4_responses or args.run_prompted_judge
-    if unsupported_flags:
+    output_flags = args.generate_turn4_responses or args.run_prompted_judge
+    if (args.smoke_test or args.extract_activations) and output_flags:
         print(
-            "Response generation and prompted judgement are not implemented yet. "
-            "Run the smoke test and activation extraction as separate commands.",
+            "Smoke/extraction and behavioural outputs must be separate runs.",
             file=sys.stderr,
         )
         return 2
@@ -64,9 +63,9 @@ def main() -> int:
             file=sys.stderr,
         )
         return 2
-    if not args.smoke_test and not args.extract_activations:
+    if not args.smoke_test and not args.extract_activations and not output_flags:
         print(
-            "Nothing selected. Pass --smoke-test or --extract-activations.",
+            "Nothing selected. Choose a model operation.",
             file=sys.stderr,
         )
         return 2
@@ -76,10 +75,19 @@ def main() -> int:
         from src.smoke_test import run_smoke_test
 
         run_smoke_test(config, args.model)
-    else:
+    elif args.extract_activations:
         from src.extract_activations import run_bulk_activation_extraction
 
         run_bulk_activation_extraction(config, args.model)
+    else:
+        from src.model_outputs import run_model_outputs
+
+        run_model_outputs(
+            config,
+            args.model,
+            responses=args.generate_turn4_responses,
+            judge=args.run_prompted_judge,
+        )
     return 0
 
 

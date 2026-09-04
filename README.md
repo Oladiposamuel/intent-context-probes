@@ -8,7 +8,7 @@ conversations.
 
 ## Current milestone
 
-Milestone 1 is complete:
+Model and dataset preparation is complete:
 
 - reproducible experiment configuration;
 - Colab/GPU environment validation;
@@ -30,9 +30,26 @@ Milestone 2 dataset infrastructure is implemented:
 - full-history/current-message prefix construction;
 - pair, label and row-count invariants with local unit tests.
 
-The real 32 scenarios have not been authored or frozen. Bulk model execution,
-response annotation, baselines, probe training and evaluation remain later
-milestones.
+The reviewed 32-scenario dataset is frozen. It contains 256 prefix rows, 64
+primary Turn-4 rows and 128 supervised Turn-3/Turn-4 rows. Bulk activation
+extraction is implemented with rendered-input deduplication, per-domain atomic
+checkpoints, safe resumption, hash validation and paired-vector assertions.
+Response generation, prompted judgements, baselines, probe training and
+evaluation remain later milestones.
+
+Turn-4 response generation and the fixed prompted-judgement baseline are now
+available through `scripts/03_run_model.py`. They use deterministic decoding,
+checkpoint after every domain, validate model/dataset identity on resume, and
+copy outputs to `MATS_PERSISTENT_ARTIFACT_ROOT`. Run both operations together
+for one checkpoint:
+
+```bash
+python scripts/03_run_model.py --config configs/experiment.yaml \
+  --model qwen3_4b --generate-turn4-responses --run-prompted-judge
+```
+
+Repeat with `--model qwen3_4b_saferl`. Generated artifacts remain ignored by
+Git and must not be committed.
 
 ## Repository rules
 
@@ -109,6 +126,31 @@ artifacts/
 `artifacts/smoke_tests/` is ignored by Git. The JSON metadata in
 `artifacts/model_metadata/` may be committed after it is reviewed.
 
+Both model revisions are pinned in `configs/experiment.yaml`. The SafeRL smoke
+test must pass before its bulk extraction:
+
+```bash
+python scripts/03_run_model.py \
+  --config configs/experiment.yaml \
+  --model qwen3_4b_saferl \
+  --smoke-test
+```
+
+After inspecting the smoke-test JSON and confirming `status: passed`, run:
+
+```bash
+python scripts/03_run_model.py \
+  --config configs/experiment.yaml \
+  --model qwen3_4b_saferl \
+  --extract-activations
+```
+
+Repeat the extraction command with `--model qwen3_4b` for the general
+checkpoint. Each run writes `full_history.npz` and `current_message.npz` under
+`artifacts/activations/<model-alias>/`, with shape `[256, 4, hidden_size]`, plus
+JSON metadata. If a runtime disconnects after a domain checkpoint, rerun the
+same command; compatible completed rows are validated and reused.
+
 ## Local verification without a GPU
 
 The following tests exercise configuration, hashing, rendering contracts and
@@ -153,6 +195,23 @@ Inspect `data/audits/length_audit.csv` and `lexical_audit.csv`. Then complete:
 - each scenario's `audit.manual_label_confirmed`: set it to `true` only after
   the scenario has actually been reviewed.
 
+The blinded audit is the preferred protocol. If it is deliberately waived,
+the strict default must be overridden with both an explicit flag and written
+reason. The pairwise semantic audit remains mandatory:
+
+~~~bash
+python scripts/01_validate_dataset.py \
+  --input data/raw/scenarios.jsonl \
+  --audit-dir data/audits \
+  --freeze \
+  --skip-blinded-audit \
+  --blinded-audit-waiver-note "Explain the protocol deviation here."
+~~~
+
+The waiver and its consequence are recorded in the freeze manifest. See
+[the protocol-deviation log](docs/PROTOCOL_DEVIATIONS.md). Do not report a
+waived audit as completed or independently validated.
+
 Rerun validation without replacing the completed review sheets:
 
 ```bash
@@ -161,7 +220,8 @@ python scripts/01_validate_dataset.py \
   --audit-dir data/audits
 ```
 
-Only after all 32 scenarios and both reviews are complete, freeze explicitly:
+Under the preferred protocol, freeze only after all 32 scenarios and both
+reviews are complete:
 
 ```bash
 python scripts/01_validate_dataset.py \
@@ -172,10 +232,12 @@ python scripts/01_validate_dataset.py \
 ```
 
 The freeze command requires exactly eight scenarios in each domain and refuses
-incomplete human audits. It rewrites the JSONL deterministically, records the
-hash and manifest, and detects later byte changes. A genuine post-freeze
-correction requires both `--allow-revision` and `--revision-note`; all later
-artifacts must then be rerun.
+an incomplete pairwise review. By default it also refuses an incomplete
+blinded audit; the documented waiver above is the only exception. It rewrites
+the JSONL deterministically, records the hash and manifest, and detects later
+byte changes. A genuine post-freeze correction requires both
+`--allow-revision` and `--revision-note`; all later artifacts must then be
+rerun.
 
 Build the experimental prefix tables only after freezing:
 
