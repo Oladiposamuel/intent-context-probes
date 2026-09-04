@@ -1,0 +1,14 @@
+torch
+transformers>=4.51.0
+accelerate
+huggingface_hub
+numpy
+pandas
+pyarrow
+scikit-learn
+scipy
+matplotlib
+seaborn
+joblib
+tqdm
+pyyaml
